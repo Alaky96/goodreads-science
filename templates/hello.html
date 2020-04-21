@@ -1,0 +1,108 @@
+<style>
+    canvas{
+
+  width:1500px !important;
+  height:800px !important;
+
+}
+</style>
+
+<form>
+    <label>Min Rating<input id="minrating" max="5" min="1" type="number"></label> <label>Max Rating<input id="maxrating" max="5" min="1" type="number"></label>
+    <label>Min Pages<input id="minpages" min="0" type="number"></label><label>Max Pages<input id="maxpages" min="0" type="number"></label>
+    <button id="updateBtn" type="button">Update</button>
+</form>
+<canvas id="canvas" ></canvas>
+
+<script src="{{ url_for('static', filename='Chart.bundle.min.js') }}"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+    $( "#updateBtn" ).click(function() {
+      updateChart($("#minrating").val(),$("#maxrating").val(),$("#minpages").val(),$("#maxpages").val());
+    });
+
+    function buildCoord(json)
+    {
+        var coord = [];
+        for(i in json)
+        {
+            coord.push({x:json[i].nb_pages, y:parseFloat(json[i].average_ratings)});
+        }
+        return coord;
+    }
+
+    function updateChart(minrating, maxrating, minpages, maxpages)
+    {
+        console.log(minrating, maxrating, minpages, maxpages);
+        $.get( "{{ url_for("getdata") }}", { minrating: minrating, maxrating: maxrating, minpages: minpages, maxpages: maxpages} )
+      .done(function( data ) {
+        json = JSON.parse(data);
+        coord = buildCoord(json);
+        removeData();
+        addData(coord);
+      });
+
+    }
+    function removeData() {
+        var dataArray = chart.data.datasets[0].data;
+
+        var length = dataArray.length;
+        for (i = 0; i < length; i++) {
+            dataArray.pop();
+        }
+        chart.update();
+    }
+
+    function addData(coord)
+    {
+        var dataArray = chart.data.datasets[0].data;
+        for (i = 0; i < coord.length; i++) {
+            dataArray.push({"x":coord[i].x, "y":coord[i].y});
+        }
+        chart.update();
+    }
+    var coord;
+    var json;
+    var chart = new Chart(document.getElementById("canvas"), {
+        type: 'scatter',
+        data: {
+          labels: "Nuage de points",
+          datasets: [
+            {
+              label: "Average Rating of a book on Goodreads vs the number of pages",
+               pointBackgroundColor: "rgba(255,0,0,0.7)",
+              data: [{"x":1, "y":1}]
+            }
+          ]
+        },
+        options: {
+              responsive: true,
+            scales: {
+                yAxes: [{
+                    ticks: {
+
+                    }
+                }],
+                 xAxes: [{
+                    ticks: {
+                        beginAtZero: true
+                    }
+                }]
+            },
+            tooltips:{
+                 callbacks: {
+                    label: function(tooltipItem, data) {
+                        return "Pages : (" + coord[tooltipItem.index].x + ") - Avg Rating : ("+ coord[tooltipItem.index].y +")";
+                    },
+                    title: function(tooltipItem, data) {
+                        return json[tooltipItem[0].index].title;
+                    }
+                }
+
+            }
+
+        }
+    });
+    updateChart();
+
+	</script>
